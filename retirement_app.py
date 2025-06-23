@@ -3,8 +3,16 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
 
-# Title
-st.title("Retirement & VA Disability Full Projection Tool (V4.1)")
+# Custom title
+st.markdown(
+    """
+    <h1 style='text-align: center; font-size: 1.6rem; font-family: "Poppins", sans-serif; color: #2c2c2c; letter-spacing: 0.5px;'>
+    My Retirement Roadmap 🚀
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
+
 st.markdown("""<style>.block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
 
 # Sidebar Inputs
@@ -24,6 +32,8 @@ employer_match_cap = st.sidebar.number_input("Employer Match Cap ($ per month)",
 
 # VA Disability Inputs
 st.sidebar.header("VA Disability")
+married = st.sidebar.checkbox("Married?", value=True)
+num_children = st.sidebar.number_input("Number of Dependent Children", min_value=0, value=0)
 use_va_table = st.sidebar.checkbox("Use VA Rate Table", value=True)
 custom_va_monthly = st.sidebar.number_input("Custom VA Monthly Benefit ($)", min_value=0, value=3877 if not use_va_table else 0)
 
@@ -38,8 +48,22 @@ use_ss = st.sidebar.checkbox("Enable Social Security", value=False)
 ss_monthly = st.sidebar.number_input("Monthly Social Security Benefit ($)", min_value=0, value=2200) if use_ss else 0
 ss_start_age = st.sidebar.number_input("Social Security Start Age", min_value=retirement_age, max_value=100, value=67) if use_ss else 0
 
-# VA Monthly Benefits Table (2025 estimates for vet with spouse)
-va_benefits_lookup = {
+# VA Monthly Benefits Table (2025 estimates)
+va_benefits_single = {
+    0: 0.00,
+    10: 171.23,
+    20: 338.49,
+    30: 529.83,
+    40: 755.28,
+    50: 1075.16,
+    60: 1350.90,
+    70: 1701.48,
+    80: 1980.46,
+    90: 2232.75,
+    100: 3627.22
+}
+
+va_benefits_married = {
     0: 0.00,
     10: 171.23,
     20: 338.49,
@@ -53,8 +77,13 @@ va_benefits_lookup = {
     100: 3877.22
 }
 
-va_disability_percent = st.sidebar.selectbox("VA Disability %", list(va_benefits_lookup.keys()), index=10)
-va_monthly = va_benefits_lookup[va_disability_percent] if use_va_table else custom_va_monthly
+va_disability_percent = st.sidebar.selectbox("VA Disability %", list(va_benefits_single.keys()), index=10)
+if married:
+    va_monthly_base = va_benefits_married[va_disability_percent]
+else:
+    va_monthly_base = va_benefits_single[va_disability_percent]
+
+va_monthly = va_monthly_base if use_va_table else custom_va_monthly
 
 # Calculations
 years = np.arange(current_age, 101)
@@ -108,7 +137,7 @@ df = pd.DataFrame({
 
 # Charts
 st.subheader("Retirement Account Balance Over Time")
-config = {"displayModeBar": False}
+config = {"displayModeBar": False, "staticPlot": True}
 
 balance_fig = go.Figure()
 balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
