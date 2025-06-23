@@ -4,21 +4,21 @@ import pandas as pd
 import plotly.graph_objs as go
 
 # Title
-st.title("Retirement & VA Disability Full Projection Tool (V3)")
+st.title("Retirement & VA Disability Full Projection Tool (V4)")
 
 # Sidebar Inputs
 st.sidebar.header("User Inputs")
-current_age = st.sidebar.number_input("Current Age", min_value=18, max_value=100, value=31)
+current_age = st.sidebar.number_input("Current Age", min_value=18, max_value=100, value=30)
 retirement_age = st.sidebar.number_input("Target Retirement Age", min_value=current_age+1, max_value=100, value=65)
 starting_balance = st.sidebar.number_input("Current Retirement Balance ($)", min_value=0, value=40000)
-monthly_contribution = st.sidebar.number_input("Monthly Retirement Contribution ($)", min_value=0, value=800)
+monthly_contribution = st.sidebar.number_input("Monthly Retirement Contribution ($)", min_value=0, value=400)
 growth_rate = st.sidebar.slider("Annual Growth Rate (%)", min_value=1.0, max_value=12.0, value=7.0) / 100
 withdrawal_rate = st.sidebar.slider("Withdrawal Rate After Retirement (%)", min_value=1.0, max_value=10.0, value=4.0) / 100
 inflation_rate = st.sidebar.slider("Inflation Rate (%)", min_value=0.0, max_value=10.0, value=2.5) / 100
 
 # Employer Match Inputs
 st.sidebar.header("Employer Match")
-employer_match_percent = st.sidebar.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=50) / 100
+employer_match_percent = st.sidebar.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=100) / 100
 employer_match_cap = st.sidebar.number_input("Employer Match Cap ($ per month)", min_value=0, value=400)
 
 # VA Disability Inputs
@@ -57,6 +57,7 @@ va_monthly = va_benefits_lookup[va_disability_percent] if use_va_table else cust
 years = np.arange(current_age, retirement_age + 36)  # model up to age 100
 balances = []
 va_income_stream = []
+retirement_income_stream = []
 withdrawals = []
 monthly_total_income = []
 inflation_adjusted_income = []
@@ -73,17 +74,20 @@ for year in years:
         total_monthly_contribution = monthly_contribution + employer_match
         balance = balance * (1 + growth_rate) + (total_monthly_contribution * 12)
         withdrawal = 0
+        retirement_income = 0
     else:
         withdrawal = balance * withdrawal_rate
         balance = balance * (1 + growth_rate) - withdrawal
         balance = max(balance, 0)  # prevent negative balance
+        retirement_income = withdrawal / 12
 
-    total_income = (withdrawal/12 if withdrawal else 0) + va_monthly
+    total_income = retirement_income + va_monthly
     inflation_adj_income = total_income / ((1 + inflation_rate) ** (year - current_age))
 
     balances.append(balance)
     withdrawals.append(withdrawal)
-    va_income_stream.append(va_monthly * 12)
+    va_income_stream.append(va_monthly)
+    retirement_income_stream.append(retirement_income)
     monthly_total_income.append(total_income)
     inflation_adjusted_income.append(inflation_adj_income)
 
@@ -92,7 +96,8 @@ df = pd.DataFrame({
     "Age": years,
     "Retirement Balance ($)": balances,
     "Annual Withdrawal ($)": withdrawals,
-    "Annual VA Disability ($)": va_income_stream,
+    "VA Monthly ($)": va_income_stream,
+    "Retirement Monthly ($)": retirement_income_stream,
     "Monthly Total Income ($)": monthly_total_income,
     "Inflation Adj. Monthly Income ($)": inflation_adjusted_income
 })
@@ -107,13 +112,14 @@ monthly_income_at_retirement = va_monthly + retirement_monthly_withdrawal
 st.subheader("Retirement Account Balance Over Time")
 balance_fig = go.Figure()
 balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance', line=dict(color='blue')))
-balance_fig.update_layout(title="Account Balance", xaxis_title="Age", yaxis_title="Balance ($)", template="plotly_white")
+balance_fig.update_layout(title="Account Balance", xaxis_title="Age", yaxis_title="Balance ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
 st.plotly_chart(balance_fig, use_container_width=True)
 
-st.subheader("Monthly Total Income Over Time")
+st.subheader("Monthly Income Streams Over Time")
 income_fig = go.Figure()
-income_fig.add_trace(go.Scatter(x=df["Age"], y=df["Monthly Total Income ($)"], mode='lines', name='Monthly Income', line=dict(color='orange')))
-income_fig.update_layout(title="Monthly Income", xaxis_title="Age", yaxis_title="Monthly Income ($)", template="plotly_white")
+income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA Monthly ($)"], mode='lines', name='VA Monthly Income', line=dict(color='green')))
+income_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Monthly ($)"], mode='lines', name='Retirement Monthly Income', line=dict(color='orange')))
+income_fig.update_layout(title="Monthly Income Streams", xaxis_title="Age", yaxis_title="Monthly Income ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
 st.plotly_chart(income_fig, use_container_width=True)
 
 # Summary
@@ -138,7 +144,8 @@ st.subheader("Detailed Year-by-Year Table")
 st.dataframe(df.style.format({
     "Retirement Balance ($)": "${:,.2f}",
     "Annual Withdrawal ($)": "${:,.2f}",
-    "Annual VA Disability ($)": "${:,.2f}",
+    "VA Monthly ($)": "${:,.2f}",
+    "Retirement Monthly ($)": "${:,.2f}",
     "Monthly Total Income ($)": "${:,.2f}",
     "Inflation Adj. Monthly Income ($)": "${:,.2f}"
 }))
