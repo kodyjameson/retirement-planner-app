@@ -1,0 +1,144 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.graph_objs as go
+
+# Title
+st.title("Retirement & VA Disability Full Projection Tool (V3)")
+
+# Sidebar Inputs
+st.sidebar.header("User Inputs")
+current_age = st.sidebar.number_input("Current Age", min_value=18, max_value=100, value=31)
+retirement_age = st.sidebar.number_input("Target Retirement Age", min_value=current_age+1, max_value=100, value=65)
+starting_balance = st.sidebar.number_input("Current Retirement Balance ($)", min_value=0, value=40000)
+monthly_contribution = st.sidebar.number_input("Monthly Retirement Contribution ($)", min_value=0, value=800)
+growth_rate = st.sidebar.slider("Annual Growth Rate (%)", min_value=1.0, max_value=12.0, value=7.0) / 100
+withdrawal_rate = st.sidebar.slider("Withdrawal Rate After Retirement (%)", min_value=1.0, max_value=10.0, value=4.0) / 100
+inflation_rate = st.sidebar.slider("Inflation Rate (%)", min_value=0.0, max_value=10.0, value=2.5) / 100
+
+# Employer Match Inputs
+st.sidebar.header("Employer Match")
+employer_match_percent = st.sidebar.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=50) / 100
+employer_match_cap = st.sidebar.number_input("Employer Match Cap ($ per month)", min_value=0, value=400)
+
+# VA Disability Inputs
+st.sidebar.header("VA Disability")
+use_va_table = st.sidebar.checkbox("Use VA Rate Table", value=True)
+custom_va_monthly = st.sidebar.number_input("Custom VA Monthly Benefit ($)", min_value=0, value=3877 if not use_va_table else 0)
+
+# Lump Sum Inputs
+st.sidebar.header("Lump Sum Contributions")
+lump_sum_age = st.sidebar.number_input("Lump Sum Contribution Age", min_value=current_age, max_value=retirement_age, value=current_age)
+lump_sum_amount = st.sidebar.number_input("Lump Sum Amount ($)", min_value=0, value=0)
+
+# Account Type
+st.sidebar.header("Account Type")
+account_type = st.sidebar.radio("Account Type:", ("401k (Tax-Deferred)", "Roth IRA (Tax-Free)"))
+
+# VA Monthly Benefits Table (2025 estimates for vet with spouse)
+va_benefits_lookup = {
+    0: 0.00,
+    10: 171.23,
+    20: 338.49,
+    30: 529.83,
+    40: 755.28,
+    50: 1075.16,
+    60: 1350.90,
+    70: 1701.48,
+    80: 1980.46,
+    90: 2232.75,
+    100: 3877.22
+}
+
+va_disability_percent = st.sidebar.selectbox("VA Disability %", list(va_benefits_lookup.keys()), index=10)
+va_monthly = va_benefits_lookup[va_disability_percent] if use_va_table else custom_va_monthly
+
+# Calculations
+years = np.arange(current_age, retirement_age + 36)  # model up to age 100
+balances = []
+va_income_stream = []
+withdrawals = []
+monthly_total_income = []
+inflation_adjusted_income = []
+
+balance = starting_balance
+
+for year in years:
+    if year == lump_sum_age:
+        balance += lump_sum_amount
+
+    if year <= retirement_age:
+        # Calculate employer match
+        employer_match = min(monthly_contribution * employer_match_percent, employer_match_cap)
+        total_monthly_contribution = monthly_contribution + employer_match
+        balance = balance * (1 + growth_rate) + (total_monthly_contribution * 12)
+        withdrawal = 0
+    else:
+        withdrawal = balance * withdrawal_rate
+        balance = balance * (1 + growth_rate) - withdrawal
+        balance = max(balance, 0)  # prevent negative balance
+
+    total_income = (withdrawal/12 if withdrawal else 0) + va_monthly
+    inflation_adj_income = total_income / ((1 + inflation_rate) ** (year - current_age))
+
+    balances.append(balance)
+    withdrawals.append(withdrawal)
+    va_income_stream.append(va_monthly * 12)
+    monthly_total_income.append(total_income)
+    inflation_adjusted_income.append(inflation_adj_income)
+
+# DataFrame
+df = pd.DataFrame({
+    "Age": years,
+    "Retirement Balance ($)": balances,
+    "Annual Withdrawal ($)": withdrawals,
+    "Annual VA Disability ($)": va_income_stream,
+    "Monthly Total Income ($)": monthly_total_income,
+    "Inflation Adj. Monthly Income ($)": inflation_adjusted_income
+})
+
+# Correct monthly income at retirement calculation
+retirement_balance = df.loc[df['Age'] == retirement_age, 'Retirement Balance ($)'].values[0]
+retirement_withdrawal = retirement_balance * withdrawal_rate
+retirement_monthly_withdrawal = retirement_withdrawal / 12
+monthly_income_at_retirement = va_monthly + retirement_monthly_withdrawal
+
+# Plotly Charts
+st.subheader("Retirement Account Balance Over Time")
+balance_fig = go.Figure()
+balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance', line=dict(color='blue')))
+balance_fig.update_layout(title="Account Balance", xaxis_title="Age", yaxis_title="Balance ($)", template="plotly_white")
+st.plotly_chart(balance_fig, use_container_width=True)
+
+st.subheader("Monthly Total Income Over Time")
+income_fig = go.Figure()
+income_fig.add_trace(go.Scatter(x=df["Age"], y=df["Monthly Total Income ($)"], mode='lines', name='Monthly Income', line=dict(color='orange')))
+income_fig.update_layout(title="Monthly Income", xaxis_title="Age", yaxis_title="Monthly Income ($)", template="plotly_white")
+st.plotly_chart(income_fig, use_container_width=True)
+
+# Summary
+st.subheader("Summary at Retirement Age")
+st.write(f"**Projected Retirement Savings at Age {retirement_age}:** ${retirement_balance:,.2f}")
+st.write(f"**Monthly Income at Retirement (VA + Withdrawals):** ${monthly_income_at_retirement:,.2f}")
+
+# CSV Download
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+csv = convert_df(df)
+st.download_button(
+    label="Download Full Projection as CSV",
+    data=csv,
+    file_name='retirement_projection.csv',
+    mime='text/csv',
+)
+
+# Show Table
+st.subheader("Detailed Year-by-Year Table")
+st.dataframe(df.style.format({
+    "Retirement Balance ($)": "${:,.2f}",
+    "Annual Withdrawal ($)": "${:,.2f}",
+    "Annual VA Disability ($)": "${:,.2f}",
+    "Monthly Total Income ($)": "${:,.2f}",
+    "Inflation Adj. Monthly Income ($)": "${:,.2f}"
+}))
