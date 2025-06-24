@@ -3,8 +3,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
 
-# Native Streamlit Title
-st.title("My DV Retirement Roadmap 🚀")
+# Add top spacer to prevent clipping
+st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+
+# Centered Title
+st.markdown("<h1 style='text-align: center;'>My DV Retirement Roadmap 🚀</h1>", unsafe_allow_html=True)
 
 st.markdown("""<style>.block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
 
