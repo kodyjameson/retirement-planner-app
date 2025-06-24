@@ -27,7 +27,7 @@ components.html(
 if "device_type" not in st.session_state:
     st.session_state.device_type = "desktop"
 
-device_type = st.experimental_get_query_params().get("deviceType", [st.session_state.device_type])[0]
+device_type = st.query_params.get("deviceType", [st.session_state.device_type])[0]
 if device_type:
     st.session_state.device_type = device_type
 
