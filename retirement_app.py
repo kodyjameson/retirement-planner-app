@@ -32,14 +32,11 @@ if st.session_state.scenarios:
         st.session_state.step = 9
 
 # SaaS Guided Onboarding Flow
-st.markdown("""<h1 style='text-align: center; color: #004080;'>My DV Retirement Roadmap 🚀</h1>""", unsafe_allow_html=True)
+st.markdown("""<h1 style='text-align: center; color: #ffffff;'>My DV Retirement Roadmap 🚀</h1>""", unsafe_allow_html=True)
 
 # Visual progress bar
 progress = (st.session_state.step - 1) / 8 if st.session_state.step <= 9 else 1
 st.progress(progress)
-
-# Cleaner card layout
-st.markdown("""<div style='background-color: #f9f9f9; padding: 20px; border-radius: 10px;'>""", unsafe_allow_html=True)
 
 if st.session_state.step == 1:
     st.header("Welcome!")
@@ -85,8 +82,6 @@ elif st.session_state.step == 8:
     else:
         ss_monthly, ss_start_age = 0, 0
     st.button("Finish", on_click=lambda: (st.session_state.data.update({'use_ss': use_ss, 'ss_monthly': ss_monthly, 'ss_start_age': ss_start_age}), go_to_step(9)))
-
-st.markdown("""</div>""", unsafe_allow_html=True)
 
 # Modeling and Save Scenario
 if st.session_state.step >= 9:
@@ -143,16 +138,16 @@ if st.session_state.step >= 9:
 
     st.subheader("Retirement Balance Over Time")
     fig_bal = go.Figure()
-    fig_bal.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance', line=dict(color='#004080'), hovertemplate="$%{y:,.0f}"))
-    fig_bal.update_layout(template="plotly_white", yaxis_title="Balance ($)")
+    fig_bal.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines+markers', name='Balance', line=dict(color='#0080FF', shape='spline', smoothing=1.3), marker=dict(size=4, color='#0080FF'), hovertemplate="$%{y:,.0f}"))
+    fig_bal.update_layout(template="plotly_dark", yaxis_title="Balance ($)", hovermode="x unified")
     st.plotly_chart(fig_bal, use_container_width=True)
 
     st.subheader("Monthly Income Over Time")
     fig_inc = go.Figure()
-    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA Income ($)"], mode='lines', name='VA Income', line=dict(color='green')))
-    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement Income ($)"], mode='lines', name='VA + Retirement', line=dict(color='orange')))
-    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines', name='With SS', line=dict(color='blue')))
-    fig_inc.update_layout(template="plotly_white", yaxis_title="Monthly Income ($)")
+    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA Income ($)"], mode='lines+markers', name='VA Income', line=dict(color='lime', shape='spline', smoothing=1.3), marker=dict(size=4, color='lime')))
+    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement Income ($)"], mode='lines+markers', name='VA + Retirement', line=dict(color='orange', shape='spline', smoothing=1.3), marker=dict(size=4, color='orange')))
+    fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines+markers', name='With SS', line=dict(color='deepskyblue', shape='spline', smoothing=1.3), marker=dict(size=4, color='deepskyblue')))
+    fig_inc.update_layout(template="plotly_dark", yaxis_title="Monthly Income ($)", hovermode="x unified")
     st.plotly_chart(fig_inc, use_container_width=True)
 
     st.success("Model complete! Save this scenario below.")
