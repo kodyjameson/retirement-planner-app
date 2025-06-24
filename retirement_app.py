@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
+import streamlit.components.v1 as components
 
 # Disable mobile browser zoom
 st.markdown(
@@ -10,6 +11,29 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Inject JavaScript to detect device type
+components.html(
+    """
+    <script>
+        const isMobile = window.innerWidth <= 768;
+        window.parent.postMessage({deviceType: isMobile ? 'mobile' : 'desktop'}, '*');
+    </script>
+    """,
+    height=0
+)
+
+# Set up listener for device type
+import time
+if "device_type" not in st.session_state:
+    st.session_state.device_type = "desktop"
+
+def get_device_type():
+    import streamlit_javascript as st_js
+    result = st_js.st_javascript("return window.innerWidth <= 768 ? 'mobile' : 'desktop';")
+    if result:
+        st.session_state.device_type = result
+get_device_type()
 
 # Add top spacer to prevent clipping
 st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
@@ -139,15 +163,25 @@ df = pd.DataFrame({
     "VA + Retirement + SS ($)": retirement_plus_va_plus_ss_stream
 })
 
+# Set chart config depending on device type
+if st.session_state.device_type == "mobile":
+    config = {
+        "displayModeBar": False,
+        "scrollZoom": False,
+        "doubleClick": False,
+        "displaylogo": False,
+        "staticPlot": True  # fully static on mobile
+    }
+else:
+    config = {
+        "displayModeBar": False,
+        "scrollZoom": False,
+        "doubleClick": False,
+        "displaylogo": False
+    }
+
 # Charts
 st.markdown("### Retirement Account Balance Over Time")
-config = {
-    "displayModeBar": False,
-    "scrollZoom": False,
-    "doubleClick": False,
-    "displaylogo": False,
-    "staticPlot": False
-}
 
 balance_fig = go.Figure()
 balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
