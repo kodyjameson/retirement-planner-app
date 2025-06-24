@@ -3,15 +3,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
 
-# Custom title
-st.markdown(
-    """
-    <h1 style='text-align: center; font-size: 1.8rem; font-family: "Poppins", sans-serif; color: #222222; letter-spacing: 0.5px; margin-top: 30px; text-shadow: 0px 1px 1px rgba(0,0,0,0.2);'>
-    My DV Retirement Roadmap 🚀
-    </h1>
-    """,
-    unsafe_allow_html=True
-)
+# Native Streamlit Title
+st.title("My DV Retirement Roadmap 🚀")
 
 st.markdown("""<style>.block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
 
@@ -136,7 +129,7 @@ df = pd.DataFrame({
 })
 
 # Charts
-st.subheader("Retirement Account Balance Over Time")
+st.markdown("### Retirement Account Balance Over Time")
 config = {
     "displayModeBar": False,
     "scrollZoom": False,
@@ -147,10 +140,10 @@ config = {
 balance_fig = go.Figure()
 balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
     hovertemplate = "$%{y:,.0f}"))
-balance_fig.update_layout(title="Account Balance", xaxis_title="Age", yaxis_title="Balance ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
+balance_fig.update_layout(title="", xaxis_title="Age", yaxis_title="Balance ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
 st.plotly_chart(balance_fig, use_container_width=True, config=config)
 
-st.subheader("Monthly Income Streams Over Time")
+st.markdown("### Monthly Income Streams Over Time")
 income_fig = go.Figure()
 income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA Monthly ($)"], mode='lines', name='VA Monthly Income', line=dict(color='green'),
     hovertemplate = "$%{y:,.0f}"))
@@ -161,11 +154,11 @@ if use_ss:
     income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines', name='VA + Retirement + SS Income', line=dict(color='blue'),
     hovertemplate = "$%{y:,.0f}"))
 
-income_fig.update_layout(title="Monthly Income Streams", xaxis_title="Age", yaxis_title="Monthly Income ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
+income_fig.update_layout(title="", xaxis_title="Age", yaxis_title="Monthly Income ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
 st.plotly_chart(income_fig, use_container_width=True, config=config)
 
 # Summary
-st.subheader("Summary at Retirement Age")
+st.markdown("### Summary at Retirement Age")
 retirement_balance = df.loc[df['Age'] == retirement_age, 'Retirement Balance ($)'].values[0]
 retirement_withdrawal = retirement_balance * withdrawal_rate
 retirement_monthly_withdrawal = retirement_withdrawal / 12
@@ -186,7 +179,7 @@ st.download_button(
 )
 
 # Show Table
-st.subheader("Detailed Year-by-Year Table")
+st.markdown("### Detailed Year-by-Year Table")
 st.dataframe(df.style.format({
     "Retirement Balance ($)": "${:,.2f}",
     "Annual Withdrawal ($)": "${:,.2f}",
