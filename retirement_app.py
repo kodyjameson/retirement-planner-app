@@ -12,28 +12,24 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Inject JavaScript to detect device type
+# Inject JavaScript to detect device type and store in localStorage
 components.html(
     """
     <script>
         const isMobile = window.innerWidth <= 768;
-        window.parent.postMessage({deviceType: isMobile ? 'mobile' : 'desktop'}, '*');
+        window.localStorage.setItem("deviceType", isMobile ? "mobile" : "desktop");
     </script>
     """,
     height=0
 )
 
-# Set up listener for device type
-import time
+# Retrieve device type from query param or default to desktop
 if "device_type" not in st.session_state:
     st.session_state.device_type = "desktop"
 
-def get_device_type():
-    import streamlit_javascript as st_js
-    result = st_js.st_javascript("return window.innerWidth <= 768 ? 'mobile' : 'desktop';")
-    if result:
-        st.session_state.device_type = result
-get_device_type()
+device_type = st.experimental_get_query_params().get("deviceType", [st.session_state.device_type])[0]
+if device_type:
+    st.session_state.device_type = device_type
 
 # Add top spacer to prevent clipping
 st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
