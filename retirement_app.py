@@ -3,6 +3,14 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
 
+# Disable mobile browser zoom
+st.markdown(
+    """
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    """,
+    unsafe_allow_html=True
+)
+
 # Add top spacer to prevent clipping
 st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
 
@@ -137,7 +145,8 @@ config = {
     "displayModeBar": False,
     "scrollZoom": False,
     "doubleClick": False,
-    "displaylogo": False
+    "displaylogo": False,
+    "staticPlot": False
 }
 
 balance_fig = go.Figure()
