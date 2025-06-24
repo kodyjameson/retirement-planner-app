@@ -2,36 +2,46 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
+import json
 
-# SaaS Guided Flow Onboarding State
+# Initialize state for SaaS Scenario Engine
 if 'step' not in st.session_state:
     st.session_state.step = 1
 if 'data' not in st.session_state:
     st.session_state.data = {}
+if 'scenarios' not in st.session_state:
+    st.session_state.scenarios = {}
 
-def next_step():
-    st.session_state.step += 1
-
+# Function to reset onboarding
 def reset():
     st.session_state.step = 1
     st.session_state.data = {}
 
-# Reset button for development
-st.sidebar.button("Restart", on_click=reset)
+# Scenario Engine UI
+st.sidebar.header("Scenario Manager")
+if st.sidebar.button("Start New Scenario"):
+    reset()
 
-# Onboarding Flow
+# Existing scenarios dropdown
+if st.session_state.scenarios:
+    selected = st.sidebar.selectbox("Load Saved Scenario", list(st.session_state.scenarios.keys()))
+    if st.sidebar.button("Load Scenario"):
+        st.session_state.data = json.loads(st.session_state.scenarios[selected])
+        st.session_state.step = 9
+
+# SaaS Guided Onboarding Flow
 st.title("My DV Retirement Roadmap 🚀")
 
 if st.session_state.step == 1:
     st.header("Welcome!")
     st.write("Let's build your personalized retirement projection. Just answer a few quick questions.")
-    st.button("Start", on_click=next_step)
+    st.button("Start", on_click=lambda: st.session_state.update({'step': 2}))
 
 elif st.session_state.step == 2:
     current_age = st.number_input("How old are you today?", min_value=18, max_value=100, value=30)
     if st.button("Next"):
         st.session_state.data['current_age'] = current_age
-        next_step()
+        st.session_state.step = 3
 
 elif st.session_state.step == 3:
     retirement_choice = st.radio(
@@ -43,22 +53,22 @@ elif st.session_state.step == 3:
         retirement_age = st.number_input("At what age would you like to retire?", min_value=st.session_state.data['current_age']+1, max_value=100, value=65)
         if st.button("Next"):
             st.session_state.data['retirement_age'] = retirement_age
-            next_step()
+            st.session_state.step = 4
     else:
         if st.button("Next"):
-            next_step()
+            st.session_state.step = 4
 
 elif st.session_state.step == 4:
     starting_balance = st.number_input("How much do you currently have saved for retirement? ($)", min_value=0, value=40000)
     if st.button("Next"):
         st.session_state.data['starting_balance'] = starting_balance
-        next_step()
+        st.session_state.step = 5
 
 elif st.session_state.step == 5:
     monthly_contribution = st.number_input("How much do you contribute monthly? ($)", min_value=0, value=400)
     if st.button("Next"):
         st.session_state.data['monthly_contribution'] = monthly_contribution
-        next_step()
+        st.session_state.step = 6
 
 elif st.session_state.step == 6:
     employer_match_percent = st.slider("Employer match (% of your contribution)", min_value=0, max_value=100, value=100)
@@ -66,7 +76,7 @@ elif st.session_state.step == 6:
     if st.button("Next"):
         st.session_state.data['employer_match_percent'] = employer_match_percent
         st.session_state.data['employer_match_cap'] = employer_match_cap
-        next_step()
+        st.session_state.step = 7
 
 elif st.session_state.step == 7:
     married = st.checkbox("Are you married?", value=True)
@@ -74,7 +84,7 @@ elif st.session_state.step == 7:
     if st.button("Next"):
         st.session_state.data['married'] = married
         st.session_state.data['va_disability_percent'] = va_disability_percent
-        next_step()
+        st.session_state.step = 8
 
 elif st.session_state.step == 8:
     use_ss = st.checkbox("Do you plan to take Social Security?", value=True)
@@ -88,18 +98,14 @@ elif st.session_state.step == 8:
         st.session_state.data['use_ss'] = use_ss
         st.session_state.data['ss_monthly'] = ss_monthly
         st.session_state.data['ss_start_age'] = ss_start_age
-        next_step()
+        st.session_state.step = 9
 
-# Modeling After Onboarding
+# Modeling and Save Scenario
 if st.session_state.step >= 9:
 
-    # Assign defaults if user didn't select retirement age
+    # Pull inputs
     current_age = st.session_state.data['current_age']
-    if st.session_state.data['retirement_choice'] == "Yes, I know my retirement age":
-        retirement_age = st.session_state.data['retirement_age']
-    else:
-        retirement_age = 65  # Default for modeling multiple scenarios later
-
+    retirement_age = st.session_state.data['retirement_age'] if st.session_state.data.get('retirement_age') else 65
     starting_balance = st.session_state.data['starting_balance']
     monthly_contribution = st.session_state.data['monthly_contribution']
     employer_match_percent = st.session_state.data['employer_match_percent'] / 100
@@ -115,7 +121,6 @@ if st.session_state.step >= 9:
 
     va_benefits_single = {0:0.00,10:171.23,20:338.49,30:529.83,40:755.28,50:1075.16,60:1350.90,70:1701.48,80:1980.46,90:2232.75,100:3627.22}
     va_benefits_married = {0:0.00,10:171.23,20:338.49,30:529.83,40:755.28,50:1075.16,60:1350.90,70:1701.48,80:1980.46,90:2232.75,100:3877.22}
-
     va_monthly = va_benefits_married[va_disability_percent] if married else va_benefits_single[va_disability_percent]
 
     years = np.arange(current_age, 101)
@@ -155,8 +160,7 @@ if st.session_state.step >= 9:
 
     st.subheader("Retirement Account Balance Over Time")
     balance_fig = go.Figure()
-    balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
-        hovertemplate = "$%{y:,.0f}"))
+    balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance', hovertemplate = "$%{y:,.0f}"))
     balance_fig.update_layout(template="plotly_white", yaxis=dict(rangemode='tozero'))
     st.plotly_chart(balance_fig, use_container_width=True)
 
@@ -169,4 +173,9 @@ if st.session_state.step >= 9:
     income_fig.update_layout(template="plotly_white", yaxis=dict(rangemode='tozero'))
     st.plotly_chart(income_fig, use_container_width=True)
 
-    st.success("Model complete! Use the Restart button if you'd like to update your scenario.")
+    st.success("Model complete! You can save this scenario below.")
+
+    scenario_name = st.text_input("Scenario Name")
+    if st.button("Save Scenario") and scenario_name:
+        st.session_state.scenarios[scenario_name] = json.dumps(st.session_state.data)
+        st.success(f"Scenario '{scenario_name}' saved!")
