@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 # Custom title
 st.markdown(
     """
-    <h1 style='text-align: center; font-size: 1.8rem; font-family: "Poppins", sans-serif; color: #1a1a1a; letter-spacing: 0.5px; margin-top: 30px; text-shadow: 1px 1px 2px #cccccc;'>
+    <h1 style='text-align: center; font-size: 1.8rem; font-family: "Poppins", sans-serif; color: #222222; letter-spacing: 0.5px; margin-top: 30px; text-shadow: 0px 1px 1px rgba(0,0,0,0.2);'>
     My DV Retirement Roadmap 🚀
     </h1>
     """,
