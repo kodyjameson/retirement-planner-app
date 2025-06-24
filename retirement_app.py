@@ -2,240 +2,171 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objs as go
-import streamlit.components.v1 as components
 
-# Disable mobile browser zoom globally
-st.markdown(
-    """
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    """,
-    unsafe_allow_html=True
-)
+# SaaS Guided Flow Onboarding State
+if 'step' not in st.session_state:
+    st.session_state.step = 1
+if 'data' not in st.session_state:
+    st.session_state.data = {}
 
-# Inject additional lockdown to prevent all pinch zoom gestures
-components.html(
-    """
-    <script>
-    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
-    document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
-    document.addEventListener('gestureend', function (e) { e.preventDefault(); });
-    </script>
-    """,
-    height=0
-)
+def next_step():
+    st.session_state.step += 1
 
-# Inject JavaScript to detect device type and store in localStorage
-components.html(
-    """
-    <script>
-        const isMobile = window.innerWidth <= 768;
-        window.localStorage.setItem("deviceType", isMobile ? "mobile" : "desktop");
-    </script>
-    """,
-    height=0
-)
+def reset():
+    st.session_state.step = 1
+    st.session_state.data = {}
 
-# Retrieve device type from query param or default to desktop
-if "device_type" not in st.session_state:
-    st.session_state.device_type = "desktop"
+# Reset button for development
+st.sidebar.button("Restart", on_click=reset)
 
-device_type = st.query_params.get("deviceType", [st.session_state.device_type])[0]
-if device_type:
-    st.session_state.device_type = device_type
+# Onboarding Flow
+st.title("My DV Retirement Roadmap 🚀")
 
-# Add top spacer to prevent clipping
-st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
+if st.session_state.step == 1:
+    st.header("Welcome!")
+    st.write("Let's build your personalized retirement projection. Just answer a few quick questions.")
+    st.button("Start", on_click=next_step)
 
-# Centered Title
-st.markdown("<h1 style='text-align: center;'>My DV Retirement Roadmap 🚀</h1>", unsafe_allow_html=True)
+elif st.session_state.step == 2:
+    current_age = st.number_input("How old are you today?", min_value=18, max_value=100, value=30)
+    if st.button("Next"):
+        st.session_state.data['current_age'] = current_age
+        next_step()
 
-st.markdown("""<style>.block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
-
-# Input form inside expander
-with st.expander("Adjust Your Inputs"):
-    st.header("User Inputs")
-    current_age = st.number_input("Current Age", min_value=18, max_value=100, value=30)
-    retirement_age = st.number_input("Target Retirement Age", min_value=current_age+1, max_value=100, value=65)
-    starting_balance = st.number_input("Current Retirement Balance ($)", min_value=0, value=40000)
-    monthly_contribution = st.number_input("Monthly Retirement Contribution ($)", min_value=0, value=400)
-    growth_rate = st.slider("Annual Growth Rate (%)", min_value=1.0, max_value=12.0, value=7.0) / 100
-    withdrawal_rate = st.slider("Withdrawal Rate After Retirement (%)", min_value=1.0, max_value=10.0, value=4.0) / 100
-    inflation_rate = st.slider("Inflation Rate (%)", min_value=0.0, max_value=10.0, value=2.5) / 100
-
-    st.subheader("Employer Match")
-    employer_match_percent = st.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=100) / 100
-    employer_match_cap = st.number_input("Employer Match Cap ($ per month)", min_value=0, value=400)
-
-    st.subheader("VA Disability")
-    married = st.checkbox("Married?", value=True)
-    num_children = st.number_input("Number of Dependent Children", min_value=0, value=0)
-    use_va_table = st.checkbox("Use VA Rate Table", value=True)
-    custom_va_monthly = st.number_input("Custom VA Monthly Benefit ($)", min_value=0, value=3877 if not use_va_table else 0)
-
-    st.subheader("Lump Sum Contributions")
-    lump_sum_age = st.number_input("Lump Sum Contribution Age", min_value=current_age, max_value=retirement_age, value=current_age)
-    lump_sum_amount = st.number_input("Lump Sum Amount ($)", min_value=0, value=0)
-
-    st.subheader("Social Security")
-    use_ss = st.checkbox("Enable Social Security", value=False)
-    ss_monthly = st.number_input("Monthly Social Security Benefit ($)", min_value=0, value=2200) if use_ss else 0
-    ss_start_age = st.number_input("Social Security Start Age", min_value=retirement_age, max_value=100, value=67) if use_ss else 0
-
-# VA Monthly Benefits Table (2025 estimates)
-va_benefits_single = {
-    0: 0.00,
-    10: 171.23,
-    20: 338.49,
-    30: 529.83,
-    40: 755.28,
-    50: 1075.16,
-    60: 1350.90,
-    70: 1701.48,
-    80: 1980.46,
-    90: 2232.75,
-    100: 3627.22
-}
-
-va_benefits_married = {
-    0: 0.00,
-    10: 171.23,
-    20: 338.49,
-    30: 529.83,
-    40: 755.28,
-    50: 1075.16,
-    60: 1350.90,
-    70: 1701.48,
-    80: 1980.46,
-    90: 2232.75,
-    100: 3877.22
-}
-
-va_disability_percent = st.selectbox("VA Disability %", list(va_benefits_single.keys()), index=10)
-if married:
-    va_monthly_base = va_benefits_married[va_disability_percent]
-else:
-    va_monthly_base = va_benefits_single[va_disability_percent]
-
-va_monthly = va_monthly_base if use_va_table else custom_va_monthly
-
-# Calculations
-years = np.arange(current_age, 101)
-balances = []
-va_income_stream = []
-retirement_income_stream = []
-retirement_plus_va_stream = []
-retirement_plus_va_plus_ss_stream = []
-withdrawals = []
-
-balance = starting_balance
-
-for year in years:
-    if year == lump_sum_age:
-        balance += lump_sum_amount
-
-    if year <= retirement_age:
-        employer_match = min(monthly_contribution * employer_match_percent, employer_match_cap)
-        total_monthly_contribution = monthly_contribution + employer_match
-        balance = balance * (1 + growth_rate) + (total_monthly_contribution * 12)
-        withdrawal = 0
-        retirement_income = 0
+elif st.session_state.step == 3:
+    retirement_choice = st.radio(
+        "Do you know your target retirement age?",
+        ("Yes, I know my retirement age", "I'm not sure yet — show me scenarios")
+    )
+    st.session_state.data['retirement_choice'] = retirement_choice
+    if retirement_choice == "Yes, I know my retirement age":
+        retirement_age = st.number_input("At what age would you like to retire?", min_value=st.session_state.data['current_age']+1, max_value=100, value=65)
+        if st.button("Next"):
+            st.session_state.data['retirement_age'] = retirement_age
+            next_step()
     else:
-        withdrawal = balance * withdrawal_rate
-        balance = balance * (1 + growth_rate) - withdrawal
-        balance = max(balance, 0)
-        retirement_income = withdrawal / 12
+        if st.button("Next"):
+            next_step()
 
-    total_va_retirement = va_monthly + retirement_income
-    total_va_retirement_ss = total_va_retirement
-    if use_ss and year >= ss_start_age:
-        total_va_retirement_ss += ss_monthly
+elif st.session_state.step == 4:
+    starting_balance = st.number_input("How much do you currently have saved for retirement? ($)", min_value=0, value=40000)
+    if st.button("Next"):
+        st.session_state.data['starting_balance'] = starting_balance
+        next_step()
 
-    balances.append(balance)
-    withdrawals.append(withdrawal)
-    va_income_stream.append(va_monthly)
-    retirement_income_stream.append(retirement_income)
-    retirement_plus_va_stream.append(total_va_retirement)
-    retirement_plus_va_plus_ss_stream.append(total_va_retirement_ss)
+elif st.session_state.step == 5:
+    monthly_contribution = st.number_input("How much do you contribute monthly? ($)", min_value=0, value=400)
+    if st.button("Next"):
+        st.session_state.data['monthly_contribution'] = monthly_contribution
+        next_step()
 
-# DataFrame
-df = pd.DataFrame({
-    "Age": years,
-    "Retirement Balance ($)": balances,
-    "Annual Withdrawal ($)": withdrawals,
-    "VA Monthly ($)": va_income_stream,
-    "Retirement Monthly ($)": retirement_income_stream,
-    "VA + Retirement ($)": retirement_plus_va_stream,
-    "VA + Retirement + SS ($)": retirement_plus_va_plus_ss_stream
-})
+elif st.session_state.step == 6:
+    employer_match_percent = st.slider("Employer match (% of your contribution)", min_value=0, max_value=100, value=100)
+    employer_match_cap = st.number_input("Employer match cap ($ per month)", min_value=0, value=400)
+    if st.button("Next"):
+        st.session_state.data['employer_match_percent'] = employer_match_percent
+        st.session_state.data['employer_match_cap'] = employer_match_cap
+        next_step()
 
-# Set chart config depending on device type
-if st.session_state.device_type == "mobile":
-    config = {
-        "displayModeBar": False,
-        "scrollZoom": False,
-        "doubleClick": False,
-        "displaylogo": False,
-        "staticPlot": True  # fully static on mobile
-    }
-else:
-    config = {
-        "displayModeBar": False,
-        "scrollZoom": False,
-        "doubleClick": False,
-        "displaylogo": False
-    }
+elif st.session_state.step == 7:
+    married = st.checkbox("Are you married?", value=True)
+    va_disability_percent = st.selectbox("What is your VA Disability %?", [0,10,20,30,40,50,60,70,80,90,100], index=10)
+    if st.button("Next"):
+        st.session_state.data['married'] = married
+        st.session_state.data['va_disability_percent'] = va_disability_percent
+        next_step()
 
-# Charts
-st.markdown("### Retirement Account Balance Over Time")
+elif st.session_state.step == 8:
+    use_ss = st.checkbox("Do you plan to take Social Security?", value=True)
+    if use_ss:
+        ss_monthly = st.number_input("Estimated Monthly Social Security Benefit ($)", min_value=0, value=2200)
+        ss_start_age = st.number_input("At what age would you like to start Social Security?", min_value=st.session_state.data['current_age'], max_value=100, value=67)
+    else:
+        ss_monthly = 0
+        ss_start_age = 0
+    if st.button("Finish"):
+        st.session_state.data['use_ss'] = use_ss
+        st.session_state.data['ss_monthly'] = ss_monthly
+        st.session_state.data['ss_start_age'] = ss_start_age
+        next_step()
 
-balance_fig = go.Figure()
-balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
-    hovertemplate = "$%{y:,.0f}"))
-balance_fig.update_layout(title="", xaxis_title="Age", yaxis_title="Balance ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
-st.plotly_chart(balance_fig, use_container_width=True, config=config)
+# Modeling After Onboarding
+if st.session_state.step >= 9:
 
-st.markdown("### Monthly Income Streams Over Time")
-income_fig = go.Figure()
-income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA Monthly ($)"], mode='lines', name='VA Monthly Income', line=dict(color='green'),
-    hovertemplate = "$%{y:,.0f}"))
-income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement ($)"], mode='lines', name='VA + Retirement Income', line=dict(color='orange'),
-    hovertemplate = "$%{y:,.0f}"))
+    # Assign defaults if user didn't select retirement age
+    current_age = st.session_state.data['current_age']
+    if st.session_state.data['retirement_choice'] == "Yes, I know my retirement age":
+        retirement_age = st.session_state.data['retirement_age']
+    else:
+        retirement_age = 65  # Default for modeling multiple scenarios later
 
-if use_ss:
-    income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines', name='VA + Retirement + SS Income', line=dict(color='blue'),
-    hovertemplate = "$%{y:,.0f}"))
+    starting_balance = st.session_state.data['starting_balance']
+    monthly_contribution = st.session_state.data['monthly_contribution']
+    employer_match_percent = st.session_state.data['employer_match_percent'] / 100
+    employer_match_cap = st.session_state.data['employer_match_cap']
+    married = st.session_state.data['married']
+    va_disability_percent = st.session_state.data['va_disability_percent']
+    use_ss = st.session_state.data['use_ss']
+    ss_monthly = st.session_state.data['ss_monthly']
+    ss_start_age = st.session_state.data['ss_start_age']
 
-income_fig.update_layout(title="", xaxis_title="Age", yaxis_title="Monthly Income ($)", yaxis=dict(rangemode='tozero'), template="plotly_white")
-st.plotly_chart(income_fig, use_container_width=True, config=config)
+    growth_rate = 0.07
+    withdrawal_rate = 0.04
 
-# Summary
-st.markdown("### Summary at Retirement Age")
-retirement_balance = df.loc[df['Age'] == retirement_age, 'Retirement Balance ($)'].values[0]
-retirement_withdrawal = retirement_balance * withdrawal_rate
-retirement_monthly_withdrawal = retirement_withdrawal / 12
-monthly_income_at_retirement = va_monthly + retirement_monthly_withdrawal
-st.write(f"**Projected Retirement Savings at Age {retirement_age}:** ${retirement_balance:,.2f}")
-st.write(f"**Monthly Income at Retirement (VA + Withdrawals):** ${monthly_income_at_retirement:,.2f}")
+    va_benefits_single = {0:0.00,10:171.23,20:338.49,30:529.83,40:755.28,50:1075.16,60:1350.90,70:1701.48,80:1980.46,90:2232.75,100:3627.22}
+    va_benefits_married = {0:0.00,10:171.23,20:338.49,30:529.83,40:755.28,50:1075.16,60:1350.90,70:1701.48,80:1980.46,90:2232.75,100:3877.22}
 
-# CSV Download
-def convert_df(df):
-    return df.to_csv(index=False).encode('utf-8')
+    va_monthly = va_benefits_married[va_disability_percent] if married else va_benefits_single[va_disability_percent]
 
-csv = convert_df(df)
-st.download_button(
-    label="Download Full Projection as CSV",
-    data=csv,
-    file_name='retirement_projection.csv',
-    mime='text/csv',
-)
+    years = np.arange(current_age, 101)
+    balances, va_income_stream, retirement_plus_va_stream, retirement_plus_va_plus_ss_stream = [], [], [], []
+    balance = starting_balance
 
-# Show Table
-st.markdown("### Detailed Year-by-Year Table")
-st.dataframe(df.style.format({
-    "Retirement Balance ($)": "${:,.2f}",
-    "Annual Withdrawal ($)": "${:,.2f}",
-    "VA Monthly ($)": "${:,.2f}",
-    "Retirement Monthly ($)": "${:,.2f}",
-    "VA + Retirement ($)": "${:,.2f}",
-    "VA + Retirement + SS ($)": "${:,.2f}"
-}))
+    for year in years:
+        if year <= retirement_age:
+            employer_match = min(monthly_contribution * employer_match_percent, employer_match_cap)
+            total_monthly_contribution = monthly_contribution + employer_match
+            balance = balance * (1 + growth_rate) + (total_monthly_contribution * 12)
+            withdrawal = 0
+            retirement_income = 0
+        else:
+            withdrawal = balance * withdrawal_rate
+            balance = balance * (1 + growth_rate) - withdrawal
+            balance = max(balance, 0)
+            retirement_income = withdrawal / 12
+
+        total_va_retirement = va_monthly + retirement_income
+        total_va_retirement_ss = total_va_retirement
+        if use_ss and year >= ss_start_age:
+            total_va_retirement_ss += ss_monthly
+
+        balances.append(balance)
+        va_income_stream.append(va_monthly)
+        retirement_plus_va_stream.append(total_va_retirement)
+        retirement_plus_va_plus_ss_stream.append(total_va_retirement_ss)
+
+    df = pd.DataFrame({
+        "Age": years,
+        "Retirement Balance ($)": balances,
+        "VA Monthly ($)": va_income_stream,
+        "VA + Retirement ($)": retirement_plus_va_stream,
+        "VA + Retirement + SS ($)": retirement_plus_va_plus_ss_stream
+    })
+
+    st.subheader("Retirement Account Balance Over Time")
+    balance_fig = go.Figure()
+    balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
+        hovertemplate = "$%{y:,.0f}"))
+    balance_fig.update_layout(template="plotly_white", yaxis=dict(rangemode='tozero'))
+    st.plotly_chart(balance_fig, use_container_width=True)
+
+    st.subheader("Monthly Income Streams Over Time")
+    income_fig = go.Figure()
+    income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA Monthly ($)"], mode='lines', name='VA Monthly Income', line=dict(color='green')))
+    income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement ($)"], mode='lines', name='VA + Retirement Income', line=dict(color='orange')))
+    if use_ss:
+        income_fig.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines', name='VA + Retirement + SS Income', line=dict(color='blue')))
+    income_fig.update_layout(template="plotly_white", yaxis=dict(rangemode='tozero'))
+    st.plotly_chart(income_fig, use_container_width=True)
+
+    st.success("Model complete! Use the Restart button if you'd like to update your scenario.")
