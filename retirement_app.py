@@ -136,19 +136,29 @@ if st.session_state.step >= 9:
         "VA + Retirement + SS ($)": total_with_ss
     })
 
+    # Retirement Balance Chart
     st.subheader("Retirement Balance Over Time")
     fig_bal = go.Figure()
-    fig_bal.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines+markers', name='Balance', line=dict(color='#0080FF', shape='spline', smoothing=1.3), marker=dict(size=4, color='#0080FF'), hovertemplate="$%{y:,.0f}"))
-    fig_bal.update_layout(template="plotly_dark", yaxis_title="Balance ($)", hovermode="x unified")
-    st.plotly_chart(fig_bal, use_container_width=True, config={"displayModeBar": False})
+    fig_bal.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines+markers', name='Balance', line=dict(color='#0080FF', shape='spline', smoothing=1.3), marker=dict(size=4, color='#0080FF')))
+    fig_bal.update_layout(template="plotly_dark", yaxis_title="Balance ($)", hovermode="x unified", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+    st.plotly_chart(fig_bal, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
 
+    age_select_bal = st.slider("Select Age for Balance", int(current_age), 100, int(retirement_age))
+    selected_row_bal = df[df["Age"] == age_select_bal].iloc[0]
+    st.info(f"At age {age_select_bal}, Retirement Balance: ${selected_row_bal['Retirement Balance ($)']:,.0f}")
+
+    # Income Chart
     st.subheader("Monthly Income Over Time")
     fig_inc = go.Figure()
     fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA Income ($)"], mode='lines+markers', name='VA Income', line=dict(color='lime', shape='spline', smoothing=1.3), marker=dict(size=4, color='lime')))
     fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement Income ($)"], mode='lines+markers', name='VA + Retirement', line=dict(color='orange', shape='spline', smoothing=1.3), marker=dict(size=4, color='orange')))
     fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines+markers', name='With SS', line=dict(color='deepskyblue', shape='spline', smoothing=1.3), marker=dict(size=4, color='deepskyblue')))
-    fig_inc.update_layout(template="plotly_dark", yaxis_title="Monthly Income ($)", hovermode="x unified")
-    st.plotly_chart(fig_inc, use_container_width=True, config={"displayModeBar": False})
+    fig_inc.update_layout(template="plotly_dark", yaxis_title="Monthly Income ($)", hovermode="x unified", legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5))
+    st.plotly_chart(fig_inc, use_container_width=True, config={"displayModeBar": False, "staticPlot": True})
+
+    age_select_inc = st.slider("Select Age for Income", int(current_age), 100, int(retirement_age))
+    selected_row_inc = df[df["Age"] == age_select_inc].iloc[0]
+    st.info(f"At age {age_select_inc}: VA Income: ${selected_row_inc['VA Income ($)']:,.0f}, VA+Retirement: ${selected_row_inc['VA + Retirement Income ($)']:,.0f}, VA+Retirement+SS: ${selected_row_inc['VA + Retirement + SS ($)']:,.0f}")
 
     st.success("Model complete! Save this scenario below.")
 
