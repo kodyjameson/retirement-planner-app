@@ -4,12 +4,24 @@ import pandas as pd
 import plotly.graph_objs as go
 import streamlit.components.v1 as components
 
-# Disable mobile browser zoom
+# Disable mobile browser zoom globally
 st.markdown(
     """
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     """,
     unsafe_allow_html=True
+)
+
+# Inject additional lockdown to prevent all pinch zoom gestures
+components.html(
+    """
+    <script>
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+    document.addEventListener('gestureend', function (e) { e.preventDefault(); });
+    </script>
+    """,
+    height=0
 )
 
 # Inject JavaScript to detect device type and store in localStorage
