@@ -140,7 +140,7 @@ if st.session_state.step >= 9:
     fig_bal = go.Figure()
     fig_bal.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines+markers', name='Balance', line=dict(color='#0080FF', shape='spline', smoothing=1.3), marker=dict(size=4, color='#0080FF'), hovertemplate="$%{y:,.0f}"))
     fig_bal.update_layout(template="plotly_dark", yaxis_title="Balance ($)", hovermode="x unified")
-    st.plotly_chart(fig_bal, use_container_width=True)
+    st.plotly_chart(fig_bal, use_container_width=True, config={"displayModeBar": False})
 
     st.subheader("Monthly Income Over Time")
     fig_inc = go.Figure()
@@ -148,7 +148,7 @@ if st.session_state.step >= 9:
     fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement Income ($)"], mode='lines+markers', name='VA + Retirement', line=dict(color='orange', shape='spline', smoothing=1.3), marker=dict(size=4, color='orange')))
     fig_inc.add_trace(go.Scatter(x=df["Age"], y=df["VA + Retirement + SS ($)"], mode='lines+markers', name='With SS', line=dict(color='deepskyblue', shape='spline', smoothing=1.3), marker=dict(size=4, color='deepskyblue')))
     fig_inc.update_layout(template="plotly_dark", yaxis_title="Monthly Income ($)", hovermode="x unified")
-    st.plotly_chart(fig_inc, use_container_width=True)
+    st.plotly_chart(fig_inc, use_container_width=True, config={"displayModeBar": False})
 
     st.success("Model complete! Save this scenario below.")
 
