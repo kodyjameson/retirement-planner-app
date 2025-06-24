@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 # Custom title
 st.markdown(
     """
-    <h1 style='text-align: center; font-size: 1.6rem; font-family: "Poppins", sans-serif; color: #2c2c2c; letter-spacing: 0.5px;'>
+    <h1 style='text-align: center; font-size: 1.6rem; font-family: "Poppins", sans-serif; color: #2c2c2c; letter-spacing: 0.5px; margin-top: 30px;'>
     My Retirement Roadmap 🚀
     </h1>
     """,
@@ -137,7 +137,12 @@ df = pd.DataFrame({
 
 # Charts
 st.subheader("Retirement Account Balance Over Time")
-config = {"displayModeBar": False, "staticPlot": True}
+config = {
+    "displayModeBar": False,
+    "scrollZoom": False,
+    "doubleClick": False,
+    "displaylogo": False
+}
 
 balance_fig = go.Figure()
 balance_fig.add_trace(go.Scatter(x=df["Age"], y=df["Retirement Balance ($)"], mode='lines', name='Balance',
