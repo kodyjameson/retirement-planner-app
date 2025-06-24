@@ -51,38 +51,35 @@ st.markdown("<h1 style='text-align: center;'>My DV Retirement Roadmap 🚀</h1>"
 
 st.markdown("""<style>.block-container {padding-top: 1rem !important;}</style>""", unsafe_allow_html=True)
 
-# Sidebar Inputs
-st.sidebar.header("User Inputs")
-current_age = st.sidebar.number_input("Current Age", min_value=18, max_value=100, value=30)
-retirement_age = st.sidebar.number_input("Target Retirement Age", min_value=current_age+1, max_value=100, value=65)
-starting_balance = st.sidebar.number_input("Current Retirement Balance ($)", min_value=0, value=40000)
-monthly_contribution = st.sidebar.number_input("Monthly Retirement Contribution ($)", min_value=0, value=400)
-growth_rate = st.sidebar.slider("Annual Growth Rate (%)", min_value=1.0, max_value=12.0, value=7.0) / 100
-withdrawal_rate = st.sidebar.slider("Withdrawal Rate After Retirement (%)", min_value=1.0, max_value=10.0, value=4.0) / 100
-inflation_rate = st.sidebar.slider("Inflation Rate (%)", min_value=0.0, max_value=10.0, value=2.5) / 100
+# Input form inside expander
+with st.expander("Adjust Your Inputs"):
+    st.header("User Inputs")
+    current_age = st.number_input("Current Age", min_value=18, max_value=100, value=30)
+    retirement_age = st.number_input("Target Retirement Age", min_value=current_age+1, max_value=100, value=65)
+    starting_balance = st.number_input("Current Retirement Balance ($)", min_value=0, value=40000)
+    monthly_contribution = st.number_input("Monthly Retirement Contribution ($)", min_value=0, value=400)
+    growth_rate = st.slider("Annual Growth Rate (%)", min_value=1.0, max_value=12.0, value=7.0) / 100
+    withdrawal_rate = st.slider("Withdrawal Rate After Retirement (%)", min_value=1.0, max_value=10.0, value=4.0) / 100
+    inflation_rate = st.slider("Inflation Rate (%)", min_value=0.0, max_value=10.0, value=2.5) / 100
 
-# Employer Match Inputs
-st.sidebar.header("Employer Match")
-employer_match_percent = st.sidebar.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=100) / 100
-employer_match_cap = st.sidebar.number_input("Employer Match Cap ($ per month)", min_value=0, value=400)
+    st.subheader("Employer Match")
+    employer_match_percent = st.slider("Employer Match (% of your contribution)", min_value=0, max_value=100, value=100) / 100
+    employer_match_cap = st.number_input("Employer Match Cap ($ per month)", min_value=0, value=400)
 
-# VA Disability Inputs
-st.sidebar.header("VA Disability")
-married = st.sidebar.checkbox("Married?", value=True)
-num_children = st.sidebar.number_input("Number of Dependent Children", min_value=0, value=0)
-use_va_table = st.sidebar.checkbox("Use VA Rate Table", value=True)
-custom_va_monthly = st.sidebar.number_input("Custom VA Monthly Benefit ($)", min_value=0, value=3877 if not use_va_table else 0)
+    st.subheader("VA Disability")
+    married = st.checkbox("Married?", value=True)
+    num_children = st.number_input("Number of Dependent Children", min_value=0, value=0)
+    use_va_table = st.checkbox("Use VA Rate Table", value=True)
+    custom_va_monthly = st.number_input("Custom VA Monthly Benefit ($)", min_value=0, value=3877 if not use_va_table else 0)
 
-# Lump Sum Inputs
-st.sidebar.header("Lump Sum Contributions")
-lump_sum_age = st.sidebar.number_input("Lump Sum Contribution Age", min_value=current_age, max_value=retirement_age, value=current_age)
-lump_sum_amount = st.sidebar.number_input("Lump Sum Amount ($)", min_value=0, value=0)
+    st.subheader("Lump Sum Contributions")
+    lump_sum_age = st.number_input("Lump Sum Contribution Age", min_value=current_age, max_value=retirement_age, value=current_age)
+    lump_sum_amount = st.number_input("Lump Sum Amount ($)", min_value=0, value=0)
 
-# Social Security Inputs
-st.sidebar.header("Social Security")
-use_ss = st.sidebar.checkbox("Enable Social Security", value=False)
-ss_monthly = st.sidebar.number_input("Monthly Social Security Benefit ($)", min_value=0, value=2200) if use_ss else 0
-ss_start_age = st.sidebar.number_input("Social Security Start Age", min_value=retirement_age, max_value=100, value=67) if use_ss else 0
+    st.subheader("Social Security")
+    use_ss = st.checkbox("Enable Social Security", value=False)
+    ss_monthly = st.number_input("Monthly Social Security Benefit ($)", min_value=0, value=2200) if use_ss else 0
+    ss_start_age = st.number_input("Social Security Start Age", min_value=retirement_age, max_value=100, value=67) if use_ss else 0
 
 # VA Monthly Benefits Table (2025 estimates)
 va_benefits_single = {
@@ -113,7 +110,7 @@ va_benefits_married = {
     100: 3877.22
 }
 
-va_disability_percent = st.sidebar.selectbox("VA Disability %", list(va_benefits_single.keys()), index=10)
+va_disability_percent = st.selectbox("VA Disability %", list(va_benefits_single.keys()), index=10)
 if married:
     va_monthly_base = va_benefits_married[va_disability_percent]
 else:
